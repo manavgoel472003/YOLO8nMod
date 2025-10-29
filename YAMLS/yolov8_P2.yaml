@@ -1,0 +1,39 @@
+# Parameters
+nc: 10 # number of classes
+scales: # model compound scaling constants, i.e. 'model=yolov8n.yaml' will call yolov8.yaml with scale 'n'
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 512] 
+
+# YOLOv8.0n backbone
+backbone:
+  - [-1, 1, Conv, [48, 3, 2]]          # 0-P1/2  (lower from 64)
+  - [-1, 1, Conv, [96, 3, 2]]          # 1-P2/4  (lower from 128)
+  - [-1, 2, C2f, [96, True]]           # 2 (lower repeats)
+  - [-1, 1, Conv, [192, 3, 2]]         # 3-P3/8  (lower from 256)
+  - [-1, 2, C2f, [192, True]]          # 4 (lower repeats/widths)
+  - [-1, 1, Conv, [384, 3, 2]]         # 5-P4/16 (lower from 512)
+  - [-1, 2, C2f, [384, True]]          # 6
+  - [-1, 1, Conv, [512, 3, 2]]         # 7-P5/32 (lower from 1024)
+  - [-1, 2, C2f, [512, True]]          # 8
+  - [-1, 1, SPPF, [512, 5]]            # 9
+
+head:
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 6], 1, Concat, [1]]          # cat P4
+  - [-1, 2, C2f, [256]]                # 12 (lower width & repeats)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 4], 1, Concat, [1]]          # cat P3
+  - [-1, 2, C2f, [128]]                # 15
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 2], 1, Concat, [1]]          # cat P2
+  - [-1, 2, C2f, [96]]                 # 18 (P2/4)
+  - [-1, 1, Conv, [128, 3, 2]]
+  - [[-1, 15], 1, Concat, [1]]
+  - [-1, 2, C2f, [128]]                # 21 (P3/8)
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [[-1, 12], 1, Concat, [1]]
+  - [-1, 2, C2f, [256]]                # 24 (P4/16)
+  - [-1, 1, Conv, [512, 3, 2]]
+  - [[-1, 9], 1, Concat, [1]]
+  - [-1, 1, C2f, [512]]                # 27 (P5/32)
+  - [[18, 21, 24, 27], 1, Detect, [nc]]  # Detect(P2, P3, P4, P5)
